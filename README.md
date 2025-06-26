@@ -1,97 +1,90 @@
-<!-- README.md -->
-THIS IS A DEMO PROJECT for getclue.com
+# GetClue Analytics API
 
-Problem 2: Optimized Data Aggregation API
+This project provides a simple analytics API built with FastAPI and PostgreSQL, along with a CSV ingestion script (`ingest.py`) and a sample data generator (`generate_sample.py`).
 
-Objective: Build a Python application that ingests CSV data into a SQL database (SQLite or PostgreSQL) and provides optimized analytical reports through API endpoints.
+## Prerequisites
 
-Requirements:
+- **Docker** & **Docker Compose** installed
+- **Python 3.8+** (for running local scripts)
 
-Data Ingestion:
+## Setup & Run
 
-A script to load CSV data into the database with validation and error handling.
+1. **Clone the repository**
+   ```bash
+   git clone <your-repo-url>
+   cd <your-repo-dir>
+   ```
 
-Analytical Endpoints:
-
-Provide API endpoints for generating:
-
-Monthly sales summaries with optimized query execution.
-
-Filtering by product, region, and date ranges, ensuring queries scale well with large datasets.
-
-A ranking of the top 5 products by revenue, ensuring index usage.
-
-Performance Optimization:
-
-Optimize database schema design to support efficient queries.
-
-Use indexing, partitions, or query caching where applicable.
-
-Measure and document query performance improvements (e.g., before/after execution times).
-
-Constraints:
-
-Use explicit SQL queries for analytical endpoints (avoid ORMs for reporting queries).
-
-Provide clear and meaningful unit tests for query performance validation.
-
-Include a document summarizing performance optimizations made.
-
-Submission:
-
-Provide your submission via a GitHub repository.
-
-Include instructions to run the application and ingest CSV data.
-
-Document how you optimized query execution and performance.
-
------
-I think firstly let try to create an example inpot csv first and potentially this will be exported out by an excel spreedsheet to a csv file.
-asking gpt4o and so something like this:
-------sample.csv------
-order_id,sale_date,product_id,product_name,region,quantity,unit_price
-1001,2025-01-05,P001,Widget A,North,  5,20.00
-1002,2025-01-07,P002,Widget B,South,  3,35.00
-1003,2025-01-12,P001,Widget A,East,   7,20.00
-1004,2025-01-22,P003,Widget C,North, 10,15.00
-1005,2025-02-02,P002,Widget B,West,   2,35.00
-1006,2025-02-08,P004,Widget D,South,  1,50.00
-1007,2025-02-14,P001,Widget A,East,   4,20.00
-1008,2025-02-21,P003,Widget C,West,   6,15.00
-1009,2025-03-03,P002,Widget B,North,  8,35.00
-1010,2025-03-15,P005,Widget E,South, 12,10.00
+2. **Start services with Docker Compose**
+   ```bash
+   docker-compose build
+   docker-compose up -d
+   ```
+   - **Postgres** will be available at `postgresql://analytics_user:analytics_pass@localhost:5432/analytics`
+   - **FastAPI** will be running at `http://localhost:8000`
+   Visit `http://localhost:8000` to view the app.
 
 
-order_id,sale_date,product_id,product_name,region,quantity,unit_price
+3. **Initialize database schema**
+   - The `init.sql` file (mounted into Postgres) automatically creates the `sales` table and indexes on startup.
 
+## Ingest CSV Data
 
-Setup postgres
+### Manual via Script
 
-docker exec -it post_gres psql \
-  -U analytics_user \
-  -d analytics_pass
+1. **Copy `ingest.py` into the API container** (optional):
+   ```bash
+   docker cp ingest.py getclue-api-1:/app/ingest.py
+   ```
+2. **Run ingestion**
+   ```bash
+   docker exec -it getclue-api-1 python ingest.py path/to/your.csv
+   ```
+   Example with generated sample:
+   ```bash
+   docker exec -it getclue-api-1 python ingest.py sample_20250101_20250107.csv
+   ```
+   This will print the number of rows inserted.
 
+### HTTP Upload Endpoint
 
+You can also upload a CSV file via the FastAPI endpoint:
 
-CREATE TABLE IF NOT EXISTS sales (
-    order_id   BIGINT      PRIMARY KEY,
-    sale_date  DATE        NOT NULL,
-    product_id TEXT        NOT NULL,
-    region     TEXT        NOT NULL,
-    quantity   INTEGER     NOT NULL,
-    unit_price NUMERIC(10,2) NOT NULL
-    );
+```bash
+curl -X POST "http://localhost:8000/upload_csv" \
+     -F "file=@path/to/your.csv"
+```
 
-<!-- Track ingestions -->
-CREATE TABLE IF NOT EXISTS ingestion_log (
-    id             SERIAL   PRIMARY KEY,
-    file_name      TEXT     NOT NULL,
-    processed_at   TIMESTAMP NOT NULL DEFAULT NOW(),
-    rows_processed INTEGER,
-    errors         INTEGER
-);
+- On success, returns a confirmation message.
+- On failure, returns an HTTP 500 with error details.
 
-<!-- Indexes for fast filtering & grouping -->
-CREATE INDEX IF NOT EXISTS idx_sales_sale_date   ON sales (sale_date);
-CREATE INDEX IF NOT EXISTS idx_sales_product_id  ON sales (product_id);
-CREATE INDEX IF NOT EXISTS idx_sales_region      ON sales (region);
+## Generate Sample CSV
+
+To quickly create a sample CSV, use the provided script:
+
+```bash
+python generate_sample.py
+```
+
+- Prompts for **start date** and **end date** in `YYYYMMDD` format.
+- Generates one record per product per day between the dates.
+- Outputs `sample_<start>_<end>.csv` in the current directory.
+
+## API Endpoints
+
+- **GET /**  
+  Serves the homepage (HTML).
+
+- **GET /sales/monthly**  
+  Returns monthly revenue summaries.  
+  **Query params**: `product_id`, `region`, `start_date`, `end_date` (optional).
+
+- **GET /products/top5**  
+  Returns top 5 products by revenue.  
+  **Query params**: `region`, `start_date`, `end_date` (optional).
+
+All endpoints return JSON responses.
+
+---
+
+Feel free to customize environment variables, add authentication, or extend the schema as needed.
