@@ -5,13 +5,16 @@ import sys
 import logging
 from datetime import datetime
 
-import psycopg
+import psycopg, os
 
 # DSN pointing at your Docker‐Compose Postgres service
-DB_DSN = "postgresql://analytics_user:analytics_pass@localhost:5432/analytics"
+DB_DSN = os.getenv(
+    "DB_DSN",
+    "postgresql://analytics_user:analytics_pass@postgresql:5432/analytics"
+)
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("ingest")
+logger = logging.getLogger("ingest")   
 
 def validate_row(row):
     """
@@ -27,53 +30,45 @@ def validate_row(row):
             int(row["quantity"]),
             float(row["unit_price"]),
         )
-    except Exception as e:
-        logger.error(f"Skipping row {row!r}: {e}")
+    except Exception:
         return None
 
 
-def bulk_insert(conn, rows):
-    """
-    Use PostgreSQL COPY FROM STDIN for bulk load.
-    `rows` should be an iterable of validated tuples.
-    """
-    buffer = io.StringIO()
-    writer = csv.writer(buffer)
-    writer.writerows(rows)
-    buffer.seek(0)
-
-    with conn.cursor() as cur:
-        cur.copy(
-            "COPY sales (order_id, sale_date, product_id, region, quantity, unit_price) "
-            "FROM STDIN WITH CSV",
-            buffer
-        )
-    conn.commit()
-
-
 def main(csv_path, batch_size=1000):
-    logger.info(f"Connecting to database: {DB_DSN}")
+    # Connect to Postgres
     conn = psycopg.connect(DB_DSN)
-    conn.autocommit = False
+    cur = conn.cursor()
+    inserted = 0
 
-    batch = []
-    with open(csv_path, newline="") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            v = validate_row(row)
-            if v is not None:
-                batch.append(v)
-            if len(batch) >= batch_size:
-                bulk_insert(conn, batch)
-                logger.info(f"Inserted {len(batch)} rows")
-                batch.clear()
+    try:
+        with open(csv_path, newline="") as f:
+            for row in csv.DictReader(f):
+                vals = validate_row(row)
+                if vals is None:
+                    continue
+                cur.execute(
+                    "INSERT INTO sales"
+                    " (order_id, sale_date, product_id, region, quantity, unit_price)"
+                    " VALUES (%s, %s, %s, %s, %s, %s)",
+                    vals
+                )
+                inserted += 1
+        conn.commit()
+        print(f"Inserted {inserted} rows into sales table.")
+    except FileNotFoundError:
+        print(f"Error: file not found: {csv_path}")
+        sys.exit(1)
+    except Exception as e:
+        conn.rollback()
+        print(f"Insertion failed: {e}")
+        sys.exit(1)
+    finally:
+        cur.close()
+        conn.close()
 
-    if batch:
-        bulk_insert(conn, batch)
-        logger.info(f"Inserted final {len(batch)} rows")
 
-    conn.close()
-    logger.info("Ingestion complete.")
-
-
-main('sample.csv')
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python ingest.py path/to/your.csv")
+        sys.exit(1)
+    main(sys.argv[1])

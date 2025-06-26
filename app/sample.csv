@@ -1,0 +1,11 @@
+order_id,sale_date,product_id,product_name,region,quantity,unit_price
+1001,2025-06-05,P001,Widget A,North,  5,20.00
+1002,2025-06-07,P002,Widget B,South,  3,35.00
+1003,2025-06-12,P001,Widget A,East,   7,20.00
+1004,2025-06-22,P003,Widget C,North, 10,15.00
+1005,2025-06-22,P002,Widget B,West,   2,35.00
+1006,2025-06-08,P004,Widget D,South,  1,50.00
+1007,2025-06-19,P001,Widget A,East,   4,20.00
+1008,2025-06-21,P003,Widget C,West,   6,15.00
+1009,2025-06-22,P002,Widget B,North,  8,35.00
+1010,2025-06-15,P005,Widget E,South, 12,10.00

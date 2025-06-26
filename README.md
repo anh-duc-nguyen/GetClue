@@ -67,7 +67,7 @@ order_id,sale_date,product_id,product_name,region,quantity,unit_price
 
 Setup postgres
 
-docker exec -it analytics_db psql \
+docker exec -it post_gres psql \
   -U analytics_user \
   -d analytics_pass
 

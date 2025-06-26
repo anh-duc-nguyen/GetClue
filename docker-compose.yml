@@ -3,7 +3,6 @@ version: '3.8'
 services:
   postgres:
     image: postgres:14-alpine
-    container_name: analytics_db
     restart: always
     environment:
       POSTGRES_USER: analytics_user
@@ -25,6 +24,6 @@ services:
       - DB_DSN=postgresql://analytics_user:analytics_pass@postgres:5432/analytics
     ports:
       - "8000:8000"
-      
+
 volumes:
   pgdata: {}

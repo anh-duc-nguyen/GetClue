@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Analytics Dashboard</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    section { margin-top: 2rem; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+  </style>
+</head>
+<body>
+
+  <h1>Data Ingestion & Reports</h1>
+
+  <!-- Upload CSV -->
+  <section>
+    <h2>1. Upload CSV</h2>
+    <input type="file" id="csvFile" accept=".csv" />
+    <button id="uploadBtn">Upload & Ingest</button>
+    <p id="uploadStatus"></p>
+  </section>
+
+  <!-- Filters -->
+  <section>
+    <h2>2. Filters</h2>
+    <label>Product ID: <input type="text" id="filterProduct" /></label>
+    <label>Region: <input type="text" id="filterRegion" /></label>
+    <label>Start Date: <input type="date" id="filterStart" /></label>
+    <label>End Date: <input type="date" id="filterEnd" /></label>
+    <button id="refreshBtn">Refresh Reports</button>
+  </section>
+
+  <!-- Monthly Sales -->
+  <section>
+    <h2>3. Monthly Sales Summary</h2>
+    <table>
+      <thead><tr><th>Month</th><th>Revenue</th></tr></thead>
+      <tbody id="monthlyBody"></tbody>
+    </table>
+  </section>
+
+  <!-- Top 5 Products -->
+  <section>
+    <h2>4. Top 5 Products by Revenue</h2>
+    <table>
+      <thead><tr><th>Product ID</th><th>Revenue</th></tr></thead>
+      <tbody id="top5Body"></tbody>
+    </table>
+  </section>
+
+<script>
+const apiBase = '';
+
+async function uploadCSV() {
+  const fileInput = document.getElementById('csvFile');
+  if (!fileInput.files.length) return alert('Please choose a file');
+  const form = new FormData();
+  form.append('file', fileInput.files[0]);
+  document.getElementById('uploadStatus').textContent = 'Uploading…';
+  let res = await fetch(`${apiBase}/upload_csv`, {
+    method: 'POST',
+    body: form
+  });
+  let txt = await res.text();
+  document.getElementById('uploadStatus').textContent = res.ok
+    ? '✔ ' + txt
+    : '✘ ' + txt;
+}
+
+async function refreshReports() {
+  const p = document.getElementById('filterProduct').value || undefined;
+  const r = document.getElementById('filterRegion').value || undefined;
+  const s = document.getElementById('filterStart').value || undefined;
+  const e = document.getElementById('filterEnd').value || undefined;
+
+  // Monthly
+  let url = new URL(`${apiBase}/sales/monthly`, location);
+  if (p) url.searchParams.set('product_id', p);
+  if (r) url.searchParams.set('region', r);
+  if (s) url.searchParams.set('start_date', s);
+  if (e) url.searchParams.set('end_date', e);
+  let mres = await fetch(url);
+  let months = await mres.json();
+  let mb = document.getElementById('monthlyBody');
+  mb.innerHTML = months.map(row =>
+    `<tr><td>${row.month}</td><td>${row.revenue.toFixed(2)}</td></tr>`
+  ).join('');
+
+  // Top 5
+  url = new URL(`${apiBase}/products/top5`, location);
+  if (r) url.searchParams.set('region', r);
+  if (s) url.searchParams.set('start_date', s);
+  if (e) url.searchParams.set('end_date', e);
+  let tres = await fetch(url);
+  let tops = await tres.json();
+  let tb = document.getElementById('top5Body');
+  tb.innerHTML = tops.map(row =>
+    `<tr><td>${row.product_id}</td><td>${row.revenue.toFixed(2)}</td></tr>`
+  ).join('');
+}
+
+document.getElementById('uploadBtn').onclick = uploadCSV;
+document.getElementById('refreshBtn').onclick = refreshReports;
+
+// on load, show empty reports
+refreshReports();
+</script>
+
+</body>
+</html>

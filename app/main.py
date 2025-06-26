@@ -1,9 +1,13 @@
 # app.py
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 import psycopg  # using v3
-import os
+import os, shutil, subprocess
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from starlette.requests import Request
 
 DB_DSN = os.getenv(
     "DB_DSN",
@@ -11,6 +15,9 @@ DB_DSN = os.getenv(
 )
 
 app = FastAPI(title="Analytics API")
+
+templates = Jinja2Templates(directory="app/templates")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 class MonthlySummary(BaseModel):
     month: str   # YYYY-MM
@@ -20,6 +27,26 @@ class TopProduct(BaseModel):
     product_id: str
     product_name: Optional[str]
     revenue: float
+
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse("home.html", {"request": request})
+
+@app.post("/upload_csv")
+async def upload_csv(file: UploadFile = File(...)):
+    # save to tmp
+    tmp_path = f"/tmp/{file.filename}"
+    with open(tmp_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    # call your ingestion script (adjust path as needed)
+    proc = subprocess.run(
+        ["python", "ingest.py", tmp_path],
+        capture_output=True, text=True
+    )
+    os.remove(tmp_path)
+    if proc.returncode != 0:
+        raise HTTPException(500, detail=proc.stderr or "Ingestion failed")
+    return proc.stdout or "Ingested successfully"
 
 @app.on_event("startup")
 def startup():
