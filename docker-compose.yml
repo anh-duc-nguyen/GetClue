@@ -15,5 +15,16 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
 
+  api:
+    build:  
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres
+    environment:
+      - DB_DSN=postgresql://analytics_user:analytics_pass@postgres:5432/analytics
+    ports:
+      - "8000:8000"
+      
 volumes:
   pgdata: {}
