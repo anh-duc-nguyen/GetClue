@@ -88,3 +88,6 @@ All endpoints return JSON responses.
 ---
 
 Feel free to customize environment variables, add authentication, or extend the schema as needed.
+If you run into any issue, or have any problem running this code, send me an email so i can walk you through. or even better,
+create a ticket on github, it beam a notification into my VScode, i can't escape that :D 
+p.s this last few line was written to make sure github push work.
