@@ -8,11 +8,10 @@ from datetime import datetime
 import psycopg
 
 # DSN pointing at your Docker‐Compose Postgres service
-DB_DSN = "postgresql://analytics_user:analytics_pass@postgres:5432/analytics"
+DB_DSN = "postgresql://analytics_user:analytics_pass@localhost:5432/analytics"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ingest")
-
 
 def validate_row(row):
     """
