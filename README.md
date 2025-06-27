@@ -11,8 +11,8 @@ This project provides a simple analytics API built with FastAPI and PostgreSQL, 
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
-   cd <your-repo-dir>
+   git clone https://github.com/anh-duc-nguyen/GetClue
+   cd GetClue
    ```
 
 2. **Start services with Docker Compose**
